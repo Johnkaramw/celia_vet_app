@@ -1,4 +1,5 @@
 import 'package:celia_vet/class/CustomerClass.dart';
+import 'package:celia_vet/class/ExpenseClass.dart';
 import 'package:celia_vet/pages/class_Product.dart';
 import 'package:celia_vet/pages/home_page.dart';
 import 'package:flutter/material.dart';
@@ -6,13 +7,13 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Hive.initFlutter();
-
   Hive.registerAdapter(ProductAdapter());
-  Hive.registerAdapter(CustomerAdapter()); // ✅ تسجيل Adapter الخاص بالعميل
+  Hive.registerAdapter(CustomerAdapter());
+  Hive.registerAdapter(ExpenseAdapter());
   await Hive.openBox<Product>('products');
-  await Hive.openBox<Customer>('customers'); // ✅ فتح الـ Box الخاص بالعملاء
+  await Hive.openBox<Customer>('customers');
+  await Hive.openBox<Expense>('expenses');
   runApp(const MyApp());
 }
 

@@ -1,5 +1,7 @@
 import 'package:celia_vet/pages/CustomerPage.dart';
+import 'package:celia_vet/pages/ExpensesPage.dart';
 import 'package:flutter/material.dart';
+
 import 'add_product_page.dart';
 import 'class_Product.dart';
 import 'edit_product_page.dart';
@@ -14,6 +16,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<Product> products = [];
+  TextEditingController searchController = TextEditingController();
+  String searchQuery = '';
 
   @override
   void initState() {
@@ -102,6 +106,16 @@ class _HomePageState extends State<HomePage> {
     return Colors.green[100]!;
   }
 
+  List<Product> get filteredProducts {
+    if (searchQuery.isEmpty) return products;
+    return products
+        .where(
+          (product) =>
+              product.name.toLowerCase().contains(searchQuery.toLowerCase()),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -110,50 +124,83 @@ class _HomePageState extends State<HomePage> {
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'other') {
-                // بعدين هنا نحط صفحة جديدة
+              if (value == 'customers') {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => CustomerPage()),
+                );
+              } else if (value == 'expenses') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ExpensesPage()),
                 );
               }
             },
             itemBuilder: (BuildContext context) => [
               const PopupMenuItem<String>(
-                value: 'other',
-                child: Text('صفحة إضافية'),
+                value: 'customers',
+                child: Text('إدارة العملاء'),
+              ),
+              const PopupMenuItem<String>(
+                value: 'expenses',
+                child: Text('صفحة المصاريف'),
               ),
             ],
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final product = products[index];
-          final quantityInStock = product.quantityBought - product.quantitySold;
-          final profit =
-              (product.sellPrice - product.buyPrice) * product.quantitySold;
-
-          return ProductCard(
-            product: product,
-            quantityInStock: quantityInStock,
-            profit: profit,
-            onSell: () => sellProductDialog(index),
-            onBuy: () => buyProductDialog(index),
-            onEdit: () async {
-              final updated = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EditProductPage(product: product),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                labelText: 'بحث عن منتج',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              );
-              if (updated != null) updateProduct(index, updated);
-            },
-            onDelete: () => deleteProduct(index),
-            cardColor: getCardColor(quantityInStock),
-          );
-        },
+              ),
+              onChanged: (value) {
+                setState(() => searchQuery = value);
+              },
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredProducts.length,
+              itemBuilder: (context, index) {
+                final product = filteredProducts[index];
+                final quantityInStock =
+                    product.quantityBought - product.quantitySold;
+                final profit =
+                    (product.sellPrice - product.buyPrice) *
+                    product.quantitySold;
+
+                return ProductCard(
+                  product: product,
+                  quantityInStock: quantityInStock,
+                  profit: profit,
+                  onSell: () => sellProductDialog(products.indexOf(product)),
+                  onBuy: () => buyProductDialog(products.indexOf(product)),
+                  onEdit: () async {
+                    final updated = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EditProductPage(product: product),
+                      ),
+                    );
+                    if (updated != null)
+                      updateProduct(products.indexOf(product), updated);
+                  },
+                  onDelete: () => deleteProduct(products.indexOf(product)),
+                  cardColor: getCardColor(quantityInStock),
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -193,64 +240,161 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final descriptionText = (product.description?.isNotEmpty ?? false)
+        ? product.description!
+        : "لا يوجد";
+
+    final expiryText = product.expiryDate != null
+        ? "${product.expiryDate!.day}/${product.expiryDate!.month}/${product.expiryDate!.year}"
+        : "غير محدد";
+
     return Card(
       color: cardColor,
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'اسم المنتج: ${product.name}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text('الكمية المتوفرة: $quantityInStock'),
-            Text('سعر الشراء: ${product.buyPrice.toStringAsFixed(2)} ج.م'),
-            Text('سعر البيع: ${product.sellPrice.toStringAsFixed(2)} ج.م'),
-            Text('الربح: ${profit.toStringAsFixed(2)} ج.م'),
-            Text('تم بيع: ${product.quantitySold} هذا الشهر'),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: onBuy,
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: const Text('شراء'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[600],
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: onSell,
-                  icon: const Icon(Icons.sell),
-                  label: const Text('بيع'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[400],
-                  ),
-                ),
-                IconButton(icon: const Icon(Icons.edit), onPressed: onEdit),
-                IconButton(icon: const Icon(Icons.delete), onPressed: onDelete),
-              ],
-            ),
-          ],
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        childrenPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
         ),
-      ),
-    );
-  }
-}
-
-// صفحة مؤقتة (هنستبدلها بعدين)
-class PlaceholderPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('صفحة إضافية')),
-      body: const Center(
-        child: Text('دي صفحة تجريبية. ابعتلي محتوى الصفحة اللي عايز تبنيها.'),
+        title: Text(
+          'اسم المنتج: ${product.name}',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
+        ),
+        children: [
+          // الصف الأول: وصف وصلاحية + كمية
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        //const Icon(Icons.description, size: 18),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'الوصف: $descriptionText',
+                            style: const TextStyle(fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        // const Icon(Icons.calendar_today, size: 18),
+                        const SizedBox(width: 6),
+                        Text('الصلاحية: $expiryText'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        //const Icon(Icons.inventory, size: 18),
+                        const SizedBox(width: 6),
+                        Text('المتوفر: $quantityInStock'),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        //const Icon(Icons.shopping_bag, size: 18),
+                        const SizedBox(width: 6),
+                        Text('تم بيع: ${product.quantitySold}'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // الصف الثاني: الأسعار والربح
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        //const Icon(Icons.attach_money, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          'شراء: ${product.buyPrice.toStringAsFixed(2)} ج.م',
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        //const Icon(Icons.shopping_cart, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          'بيع: ${product.sellPrice.toStringAsFixed(2)} ج.م',
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        // const Icon(Icons.local_offer, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          'بيع جملة: ${(product.sellPrice * product.quantitySold).toStringAsFixed(2)} ج.م',
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        // const Icon(Icons.trending_up, size: 18),
+                        const SizedBox(width: 6),
+                        Text('الربح: ${profit.toStringAsFixed(2)} ج.م'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ElevatedButton.icon(
+                onPressed: onBuy,
+                icon: const Icon(Icons.add_shopping_cart),
+                label: const Text('شراء'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[600],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: onSell,
+                icon: const Icon(Icons.sell),
+                label: const Text('بيع'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[400],
+                ),
+              ),
+              IconButton(icon: const Icon(Icons.edit), onPressed: onEdit),
+              IconButton(icon: const Icon(Icons.delete), onPressed: onDelete),
+            ],
+          ),
+        ],
       ),
     );
   }
