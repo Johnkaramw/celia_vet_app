@@ -90,19 +90,19 @@ class _CustomerPageState extends State<CustomerPage> {
 المتبقي: ${customer.remaining}
     ''';
 
-    final url = Uri.parse(
-      "https://api.whatsapp.com/send?text=${Uri.encodeComponent(msg)}",
-    );
+    void shareToWhatsApp(BuildContext context, String msg) async {
+      final url = Uri.parse("whatsapp://send?text=${Uri.encodeComponent(msg)}");
 
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("تعذر فتح واتساب"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("تعذر فتح واتساب"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -330,23 +330,30 @@ class _CustomerPageState extends State<CustomerPage> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      _buildAmount(
-                                        "إجمالي",
-                                        customer.totalAmount,
-                                        Colors.blue,
+                                      Expanded(
+                                        child: _buildAmount(
+                                          "إجمالي",
+                                          customer.totalAmount,
+                                          Colors.blue,
+                                        ),
                                       ),
-                                      _buildAmount(
-                                        "مدفوع",
-                                        customer.paidAmount,
-                                        Colors.green,
+                                      Expanded(
+                                        child: _buildAmount(
+                                          "مدفوع",
+                                          customer.paidAmount,
+                                          Colors.green,
+                                        ),
                                       ),
-                                      _buildAmount(
-                                        "الباقي",
-                                        customer.remaining,
-                                        Colors.red,
+                                      Expanded(
+                                        child: _buildAmount(
+                                          "الباقي",
+                                          customer.remaining,
+                                          Colors.red,
+                                        ),
                                       ),
                                     ],
                                   ),
+
                                   const SizedBox(height: 12),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
